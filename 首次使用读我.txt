@@ -1,0 +1,5 @@
+首次使用需要使用“文本编辑器”打开《点我生成.bat》，然后对第一行做如下修改：
+将第一行
+set Client_Code_PATH="E:\Works\Cloud_Unreal\Source\Cloud\GameData\"
+改为
+set Client_Code_PATH="你Cloud UE4工程的完整路径\Source\Cloud\GameData\"
