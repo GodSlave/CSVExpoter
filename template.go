@@ -9,10 +9,10 @@ var ClientEnum= `// Fill out your copyright notice in the Description page of Pr
 
 {{range $index,$A := .Enums }}
 UENUM(BlueprintType)
-enum class E{{$A.Name}}Enum : uint8
+enum class {{$A.Name}} : uint8
 {
 	{{range $index,$B := $A.Attributes }}
-	VE_{{$B.Name}} = {{$B.Type}}	UMETA(DisplayName = "{{$B.Desc}}"),
+	{{$B.Name}} = {{$B.Type}}	UMETA(DisplayName = "{{$B.Desc}}"),
 	{{end }}
 };
 {{end }}`
@@ -29,18 +29,18 @@ var ClientStruct=`// Fill out your copyright notice in the Description page of P
 
 {{range $index,$A := .All }}
 USTRUCT(BlueprintType)
-struct F{{$A.Name}}Data: public FTableRowBase
+struct F{{$A.Name}}: public FTableRowBase
 {
 	GENERATED_USTRUCT_BODY()
 
 public:
 
-	F{{$A.Name}}Data()
+	F{{$A.Name}}()
 	{}
 	{{range $index,$V := $A.Attributes }}
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "{{$A.Name}}", meta = (DisplayName = "{{$V.Desc}}"))
 	{{if $V.IsArray}}
-	TArray<{{$V.Type}}> {{$V.Name}};{{else}}
+	TArray< F{{$V.Type}}> {{$V.Name}};{{else}}
 	{{$V.Type}} {{$V.Name}};
 	{{end}}{{end}}
 
@@ -48,6 +48,7 @@ public:
 {{end}}`
 
 var ServerStruct=`package bean
+
 
 
 // model
@@ -58,9 +59,14 @@ type {{$A.Name}} struct {
 {{end}}{{end}}
 }{{end}}
 
+{{range $index,$A := .KeyMapModule.Attributes }}
+const {{$A.Name}} = {{$A.Desc}}
+{{end}}
+
 {{range $index,$A := .Enums }}
 //{{$A.Name}}
-{{range $index,$V := $A.Attributes }}var {{$A.Name}}_{{$V.Name}} = {{$V.Type}} // {{$V.Desc}}
+type {{$A.Name}} int32
+{{range $index,$V := $A.Attributes }}const {{$A.Name}}_{{$V.Name}} = {{$V.Type}} // {{$V.Desc}}
 {{end}}{{end}}
 
 {{range $index,$A := .All }}{{if $A.HasPrimalKey}}var {{$A.Name}}s  map[string]{{$A.Name}}{{else}}var {{$A.Name}}s  []{{$A.Name}}{{end}}

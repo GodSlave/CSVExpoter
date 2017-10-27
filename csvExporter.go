@@ -11,7 +11,6 @@ import (
 	"flag"
 	"io/ioutil"
 	"html/template"
-	"strconv"
 )
 
 var delimiter = flag.String("d", ",", "Delimiter to use between fields")
@@ -19,8 +18,9 @@ var delimiter = flag.String("d", ",", "Delimiter to use between fields")
 type outputer func(s string)
 
 type AllModule struct {
-	All   []Module
-	Enums []Module
+	All          []Module
+	Enums        []Module
+	KeyMapModule Module
 }
 
 type Module struct {
@@ -51,12 +51,13 @@ type AllEnum struct {
 var ClientTypeMap map[string]string
 var ServerTypeMap map[string]string
 var TableNameMap map[string]string
+var nameSort []string
 var ClientAllModule *AllModule
 var ServerAllModule *AllModule
 
 func main() {
 	ClientTypeMap = map[string]string{"i": "int32", "f": "float", "s": "FName", "b": "bool", "e": "EVictoryEnum", "a": "objectArray", "o": "object"}
-	ServerTypeMap = map[string]string{"i": "int64", "f": "float", "s": "string", "b": "bool", "e": "int32", "a": "objectArray", "o": "object"}
+	ServerTypeMap = map[string]string{"i": "int32", "f": "float", "s": "string", "b": "bool", "e": "int32", "a": "objectArray", "o": "object"}
 	TableNameMap = map[string]string{}
 
 	file, _ := exec.LookPath(os.Args[0])
@@ -68,10 +69,7 @@ func main() {
 	err = os.MkdirAll(ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CODE", os.ModePerm)
 	err = os.MkdirAll(ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CSV", os.ModePerm)
 	err = os.MkdirAll(ApplicationDir+"out"+string(filepath.Separator)+"server", os.ModePerm)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
+	checkError(err)
 	ClientAllModule = &AllModule{}
 	ServerAllModule = &AllModule{}
 	process(ApplicationDir, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CSV", true)
@@ -86,9 +84,8 @@ func main() {
 
 func loadNameMapTable(dirPath string) {
 	xlFile, error := xlsx.OpenFile(dirPath + string(filepath.Separator) + "对照表.xlsx")
-	if error != nil {
-		fmt.Println("没有对照表")
-	}
+	fmt.Println("没有对照表")
+	checkError(error)
 	if len(xlFile.Sheets) < 1 {
 		fmt.Println("对照表内没有数据")
 	}
@@ -99,7 +96,6 @@ func loadNameMapTable(dirPath string) {
 		for rowIndex, cell := range row.Cells {
 			str, err := cell.FormattedValue()
 			if err != nil {
-				//vals = append(vals, err.Error())
 				str = err.Error()
 			}
 			switch rowIndex {
@@ -110,6 +106,7 @@ func loadNameMapTable(dirPath string) {
 			}
 		}
 		TableNameMap[key] = value
+		nameSort = append(nameSort, value)
 	}
 }
 
@@ -129,11 +126,11 @@ func generateClientCSVFromXLSXFile2(xlFile *xlsx.File, sheetIndex int, outputf o
 
 		if row != nil {
 			var attr Attr
+			var enumAttr = Attr{}
 			for rowIndex, cell := range row.Cells {
 				attr = Attr{}
 				str, err := cell.FormattedValue()
 				if err != nil {
-					//vals = append(vals, err.Error())
 					str = err.Error()
 				}
 				if index == 0 {
@@ -158,6 +155,7 @@ func generateClientCSVFromXLSXFile2(xlFile *xlsx.File, sheetIndex int, outputf o
 							attr.Type = contentType
 						} else {
 							attr.Type = contentTypeKey
+							fmt.Println(attr.Type)
 						}
 						vals = append(vals, Name)
 						module.Attributes = append(module.Attributes, attr)
@@ -168,11 +166,11 @@ func generateClientCSVFromXLSXFile2(xlFile *xlsx.File, sheetIndex int, outputf o
 						if index >= 3 {
 							switch rowIndex {
 							case 0:
-								attr.Type = strconv.Itoa(rowIndex)
+								enumAttr.Type = str
 							case 1:
-								attr.Name = str
+								enumAttr.Name = str
 							case 2:
-								attr.Desc = str
+								enumAttr.Desc = str
 							}
 						}
 					}
@@ -181,12 +179,12 @@ func generateClientCSVFromXLSXFile2(xlFile *xlsx.File, sheetIndex int, outputf o
 			if index == 0 {
 				continue
 			}
-			if attr.Desc == "" {
-				attr.Desc = attr.Name
+			if enumAttr.Desc == "" {
+				enumAttr.Desc = attr.Name
 			}
-			if attr.Name != "" {
+			if enumAttr.Name != "" {
 				if isEnum {
-					enum.Attributes = append(enum.Attributes, attr)
+					enum.Attributes = append(enum.Attributes, enumAttr)
 				}
 			}
 			content := strings.Join(vals, *delimiter) + "\n"
@@ -299,7 +297,6 @@ func generateServerCSVFromXLSXFile2(xlFile *xlsx.File, sheetIndex int, outputf o
 			if indeName, ok := keymap[rowIndex]; ok {
 				str, err := cell.FormattedValue()
 				if err != nil {
-					//vals = append(vals, err.Error())
 					str = err.Error()
 				}
 				descVals = append(descVals, str)
@@ -344,32 +341,21 @@ func generateServerCSVFromXLSXFile2(xlFile *xlsx.File, sheetIndex int, outputf o
 
 func process(dirPath string, outdir string, clientMode bool) error {
 	files, error := ioutil.ReadDir(dirPath)
-	if error != nil {
-		fmt.Println(error.Error())
-		return error
-	}
+	checkError(error)
 	for _, info := range files {
 		if info.IsDir() {
 			if info.Name()[0] != '.' && info.Name() != "out" {
-				//err := os.MkdirAll(outdir+string(filepath.Separator)+info.Name(), os.ModePerm)
-				//if err != nil {
-				//	fmt.Println(err.Error())
-				//	return err
-				//}
 				process(dirPath+string(filepath.Separator)+info.Name(), outdir+string(filepath.Separator)+info.Name(),
 					clientMode)
 			}
-			//return process(path, clientMode)
 		} else {
-			if len(info.Name()) > 4 && info.Name()[0:2] != "~$" && info.Name() != "对照表.xlsx" {
+			if len(info.Name()) > 4 && info.Name()[0:2] != "~$" && info.Name() != "对照表.xlsx" &&
+				!strings.HasSuffix(info.Name(), "配置.xlsx") {
 				if string(info.Name()[len(info.Name())-4:]) == "xlsx" {
 					xlFile, error := xlsx.OpenFile(dirPath + string(filepath.Separator) + info.Name())
-					if error != nil {
-						fmt.Println(error.Error())
-						return error
-					}
+					checkError(error)
 					sheetLen := len(xlFile.Sheets)
-					isEnum := info.Name() == "枚举.xlsx"
+					isEnum := strings.HasSuffix(info.Name(), "枚举.xlsx")
 					switch {
 					case sheetLen == 0:
 						return errors.New("This XLSX file contains no sheets.")
@@ -383,26 +369,18 @@ func process(dirPath string, outdir string, clientMode bool) error {
 						}
 						DoGenerateFile(xlFile, 0, isEnum, outPutFileName, clientMode)
 					case sheetLen > 1:
-						fileOutDir := outdir + string(filepath.Separator) + info.Name()[0:strings.LastIndexByte(info.Name(), '.')]
-						if !isEnum || !clientMode {
-							err := os.MkdirAll(fileOutDir, os.ModePerm)
-							if err != nil {
-								fmt.Println(err.Error())
-								return err
-							}
-						}
-
 						for i := 0; i < sheetLen; i++ {
 							sheet := xlFile.Sheets[i]
 							outPutFileName := sheet.Name
 							if contentType, ok := TableNameMap[outPutFileName]; ok {
 								outPutFileName = contentType
 							}
-
 							DoGenerateFile(xlFile, i, isEnum, outPutFileName, clientMode)
 						}
 					}
 				}
+			} else if (strings.HasSuffix(info.Name(), "配置.xlsx")) {
+				readKeyMap(dirPath+string(filepath.Separator)+info.Name(), clientMode)
 			}
 		}
 	}
@@ -418,41 +396,37 @@ func DoGenerateFile(xlFile *xlsx.File, sheetIndex int, isEnum bool, outFileName 
 		error = generateServerCSVFromXLSXFile2(xlFile, sheetIndex, nil, isEnum, outFileName)
 	}
 
-	if error != nil {
-		fmt.Println(error.Error())
-		return error
-	}
+	checkError(error)
 	return nil
 }
 
 func GenerateClientHeadFile(all *AllModule, path string) error {
-	tpl, err := template.New("client_struct.template").Parse(ClientStruct)
-	if err != nil {
-		fmt.Println(err.Error())
-		return err
+	var alll []Module
+	for _, content := range nameSort {
+		for _, module := range all.All {
+			if module.Name == content {
+				alll = append(alll, module)
+				fmt.Println(content)
+			}
+		}
 	}
-
+	all.All = alll
+	tpl, err := template.New("client_struct.template").Parse(ClientStruct)
+	checkError(err)
 	var printer = Printer{}
 	printer.f, err = os.OpenFile(path+string(filepath.Separator)+"GeneratedStructs.h", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	err = tpl.Execute(&printer, all)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
+	checkError(err)
 	return err
 }
 
 func generateClientEnumFile(all *AllModule, path string) error {
 	tpl, err := template.New("client_enum.template").Parse(ClientEnum)
-	if err != nil {
-		fmt.Println(err.Error())
-		return err
-	}
+	checkError(err)
 	var printer = Printer{}
 	printer.f, err = os.OpenFile(path+string(filepath.Separator)+"GeneratedEnums.h", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	err = tpl.Execute(&printer, all)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
+	checkError(err)
 	return err
 }
 
@@ -468,9 +442,7 @@ func generateServerFile(all *AllModule, path string) error {
 	var printer = Printer{}
 	printer.f, err = os.OpenFile(path+string(filepath.Separator)+"bean.go", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	err = tpl.Execute(&printer, all)
-	if err != nil {
-		fmt.Println(err.Error())
-	}
+	checkError(err)
 	return err
 }
 
@@ -481,6 +453,7 @@ type Printer struct {
 func (printer *Printer) Write(p []byte) (n int, err error) {
 	content := string(p)
 	content = strings.Replace(content, "&#34;", "\"", -1)
+	content = strings.Replace(content, "&lt;", "<", -1)
 	_, err = printer.f.Write([]byte(content))
 	if err != nil {
 		fmt.Println(err.Error())
@@ -549,7 +522,11 @@ func parseForServer(types [] Attr, contents []string) string {
 					return "format Error"
 				}
 			} else {
+
 				value := contents[i]
+				if len(value) < 4 {
+					return ""
+				}
 				value = value[2:len(value)-2]
 				ItemType := types[i].Type
 				var matched = false
@@ -619,10 +596,7 @@ func generateClientCSVFile(module Module, outPutFileDir string) error {
 	}
 	result := strings.Join(allContent, "\n")
 	error := ioutil.WriteFile(outPutFileDir+string(filepath.Separator)+module.Name+".csv", []byte(result), os.ModePerm)
-	if error != nil {
-		fmt.Println(error.Error())
-		return error
-	}
+	checkError(error)
 	return nil
 }
 
@@ -682,4 +656,64 @@ func buildClientCSVContent(types [] Attr, contents []string, withName bool) stri
 		}
 	}
 	return result
+}
+
+func checkError(err error) {
+	if err != nil {
+		fmt.Println(err.Error())
+		panic(err)
+	}
+}
+
+func readKeyMap(filePath string, isClientMode bool) {
+	xlFile, error1 := xlsx.OpenFile(filePath)
+	checkError(error1)
+	sheetLen := len(xlFile.Sheets)
+
+	for i := 0; i < sheetLen; i++ {
+		sheet := xlFile.Sheets[i]
+		for _, row := range sheet.Rows {
+			attr := Attr{}
+			var err error
+			for index, cell := range row.Cells {
+				switch index {
+				case 0:
+					attr.Name, err = cell.FormattedValue()
+				case 1:
+					attr.Type, err = cell.FormattedValue()
+					checkError(err)
+					if isClientMode {
+						if contentType, ok := ClientTypeMap[attr.Type]; ok {
+							attr.Type = contentType
+						}
+					} else {
+						if contentType, ok := ServerTypeMap[attr.Type]; ok {
+							attr.Type = contentType
+						}
+					}
+				case 2:
+					attr.Desc, err = cell.FormattedValue()
+					switch attr.Type {
+					case "int32", "float", "int64":
+
+					case "bool":
+						if attr.Desc == "1" {
+							attr.Desc = "true"
+						} else {
+							attr.Desc = "false"
+						}
+					case "string,FName":
+						attr.Desc = fmt.Sprintf("\"%s\"", attr.Desc)
+					}
+				}
+			}
+			if isClientMode {
+				ClientAllModule.KeyMapModule.Attributes = append(ClientAllModule.KeyMapModule.Attributes, attr)
+			} else {
+				ServerAllModule.KeyMapModule.Attributes = append(ServerAllModule.KeyMapModule.Attributes, attr)
+			}
+		}
+
+	}
+
 }
