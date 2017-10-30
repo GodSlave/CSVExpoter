@@ -83,3 +83,31 @@ func init()  {
    {{end}}{{end}}
 }
 `
+var client_keymap_head=`// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
+#include "GeneratedConstVariables.generated.h"
+
+UCLASS()
+class CLOUD_API UGeneratedConstVariables : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+public:
+	{{range $index,$A := .KeyMapModule.Attributes }}
+	static  const int {{$A.Name}};
+
+	UFUNCTION(BlueprintPure, Category = "Const Variables", meta = (DisplayName = "{{$A.Name}}"))
+	static	{{$A.Type}} Get{{$A.Name}}() { return {{$A.Name}}; }
+	{{end}}
+};
+`
+var client_keymap_content =`
+// Fill out your copyright notice in the Description page of Project Settings.
+#include "GeneratedConstVariables.h"
+{{range $index,$A := .KeyMapModule.Attributes }}
+const {{$A.Type}} UGeneratedConstVariables::{{$A.Name}} = {{$A.Desc}};
+{{end}}
+`

@@ -75,6 +75,8 @@ func main() {
 	process(ApplicationDir, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CSV", true)
 	GenerateClientHeadFile(ClientAllModule, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CODE")
 	generateClientEnumFile(ClientAllModule, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CODE")
+	generateClientConstValueCppFile(ClientAllModule, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CODE")
+	generateClientConstValueHeadFile(ClientAllModule, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CODE")
 	for _, module := range ClientAllModule.All {
 		generateClientCSVFile(module, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CSV")
 	}
@@ -84,7 +86,6 @@ func main() {
 
 func loadNameMapTable(dirPath string) {
 	xlFile, error := xlsx.OpenFile(dirPath + string(filepath.Separator) + "对照表.xlsx")
-	fmt.Println("没有对照表")
 	checkError(error)
 	if len(xlFile.Sheets) < 1 {
 		fmt.Println("对照表内没有数据")
@@ -418,6 +419,24 @@ func GenerateClientHeadFile(all *AllModule, path string) error {
 	err = tpl.Execute(&printer, all)
 	checkError(err)
 	return err
+}
+
+func generateClientConstValueCppFile(all *AllModule, path string) {
+	tpl, err := template.New("client_struct.template").Parse(client_keymap_content)
+	checkError(err)
+	var printer = Printer{}
+	printer.f, err = os.OpenFile(path+string(filepath.Separator)+"GeneratedConstVariables.cpp", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	err = tpl.Execute(&printer, all)
+	checkError(err)
+}
+
+func generateClientConstValueHeadFile(all *AllModule, path string) {
+	tpl, err := template.New("client_struct.template").Parse(client_keymap_head)
+	checkError(err)
+	var printer = Printer{}
+	printer.f, err = os.OpenFile(path+string(filepath.Separator)+"GeneratedConstVariables.h", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	err = tpl.Execute(&printer, all)
+	checkError(err)
 }
 
 func generateClientEnumFile(all *AllModule, path string) error {
