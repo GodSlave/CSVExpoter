@@ -1,6 +1,6 @@
 package main
 
-var ClientEnum= `// Fill out your copyright notice in the Description page of Project Settings.
+var ClientEnum = `// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -16,7 +16,7 @@ enum class {{$A.Name}} : uint8
 	{{end }}
 };
 {{end }}`
-var ClientStruct=`// Fill out your copyright notice in the Description page of Project Settings.
+var ClientStruct = `// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -47,7 +47,7 @@ public:
 };
 {{end}}`
 
-var ServerStruct=`package bean
+var ServerStruct = `package bean
 
 
 
@@ -83,7 +83,7 @@ func init()  {
    {{end}}{{end}}
 }
 `
-var client_keymap_head=`// Fill out your copyright notice in the Description page of Project Settings.
+var client_keymap_head = `// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -97,14 +97,14 @@ class CLOUD_API UGeneratedConstVariables : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 public:
 	{{range $index,$A := .KeyMapModule.Attributes }}
-	static  const int {{$A.Name}};
+	static  const {{$A.Type}} {{$A.Name}};
 
 	UFUNCTION(BlueprintPure, Category = "Const Variables", meta = (DisplayName = "{{$A.Name}}"))
 	static	{{$A.Type}} Get{{$A.Name}}() { return {{$A.Name}}; }
 	{{end}}
 };
 `
-var client_keymap_content =`
+var client_keymap_content = `
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "GeneratedConstVariables.h"
 {{range $index,$A := .KeyMapModule.Attributes }}

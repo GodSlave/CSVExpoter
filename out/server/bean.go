@@ -8,6 +8,8 @@ package bean
 
 const WorShip_Inter = 60
 
+const XXX = "1234"
+
 
 
 //EDuty
