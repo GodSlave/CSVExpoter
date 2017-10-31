@@ -73,13 +73,14 @@ func main() {
 	ClientAllModule = &AllModule{}
 	ServerAllModule = &AllModule{}
 	process(ApplicationDir, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CSV", true)
+	for _, module := range ClientAllModule.All {
+		generateClientCSVFile(module, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CSV")
+	}
 	GenerateClientHeadFile(ClientAllModule, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CODE")
 	generateClientEnumFile(ClientAllModule, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CODE")
 	generateClientConstValueCppFile(ClientAllModule, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CODE")
 	generateClientConstValueHeadFile(ClientAllModule, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CODE")
-	for _, module := range ClientAllModule.All {
-		generateClientCSVFile(module, ApplicationDir+"out"+string(filepath.Separator)+"client"+string(filepath.Separator)+"CSV")
-	}
+
 	process(ApplicationDir, ApplicationDir+"out"+string(filepath.Separator)+"server", false)
 	generateServerFile(ServerAllModule, ApplicationDir+"out"+string(filepath.Separator)+"server")
 }
@@ -189,9 +190,14 @@ func generateClientCSVFromXLSXFile2(xlFile *xlsx.File, sheetIndex int, outputf o
 				}
 			}
 			content := strings.Join(vals, *delimiter) + "\n"
-			if index != 1 && module.HasPrimalKey {
-				module.Content = append(module.Content,
-					Contents{vals, ParsPrimalKey(module.Attributes, vals),})
+			if index != 1 {
+				if module.HasPrimalKey {
+					module.Content = append(module.Content,
+						Contents{vals, ParsPrimalKey(module.Attributes, vals),})
+				} else {
+					module.Content = append(module.Content,
+						Contents{vals, "",})
+				}
 			}
 			allDatas = append(allDatas, content)
 		}
@@ -282,7 +288,9 @@ func generateServerCSVFromXLSXFile2(xlFile *xlsx.File, sheetIndex int, outputf o
 			if index != 2 {
 				module.Content = append(module.Content, Contents{vals, "testName"})
 			}
-			allDatas = append(allDatas, strings.Join(vals, *delimiter)+"\n")
+			content := strings.Join(vals, *delimiter)
+			fmt.Println(content)
+			allDatas = append(allDatas, content+"\n")
 
 		}
 	}
@@ -353,6 +361,7 @@ func process(dirPath string, outdir string, clientMode bool) error {
 			if len(info.Name()) > 4 && info.Name()[0:2] != "~$" && info.Name() != "对照表.xlsx" &&
 				!strings.HasSuffix(info.Name(), "配置.xlsx") {
 				if string(info.Name()[len(info.Name())-4:]) == "xlsx" {
+					fmt.Println(info.Name())
 					xlFile, error := xlsx.OpenFile(dirPath + string(filepath.Separator) + info.Name())
 					checkError(error)
 					sheetLen := len(xlFile.Sheets)
@@ -544,24 +553,26 @@ func parseForServer(types [] Attr, contents []string) string {
 
 				value := contents[i]
 				if len(value) < 4 {
-					return ""
-				}
-				value = value[2:len(value)-2]
-				ItemType := types[i].Type
-				var matched = false
-				for _, module := range ServerAllModule.All {
-					if module.Name == ItemType {
-						subSubValues := strings.Split(value, ",")
-						tempresult := parseForServer(module.Attributes, subSubValues)
-						content = fmt.Sprintf("%s{%s},", ItemType, tempresult)
-						matched = true
-						break
+					content = value
+				} else {
+					value = value[2:len(value)-2]
+					ItemType := types[i].Type
+					var matched = false
+					for _, module := range ServerAllModule.All {
+						if module.Name == ItemType {
+							subSubValues := strings.Split(value, ",")
+							tempresult := parseForServer(module.Attributes, subSubValues)
+							content = fmt.Sprintf("%s{%s},", ItemType, tempresult)
+							matched = true
+							break
+						}
+					}
+					if !matched {
+						content = fmt.Sprintf("{%s}", value)
+						fmt.Println("can't find assign Type")
 					}
 				}
-				if !matched {
-					content = fmt.Sprintf("{%s}", value)
-					fmt.Println("can't find assign Type")
-				}
+
 			}
 		}
 		result += content + ","

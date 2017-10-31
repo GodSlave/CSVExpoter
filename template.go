@@ -75,6 +75,7 @@ type {{$A.Name}} int32
 func init()  {
 {{range $index,$A := .All }}
    {{if $A.HasPrimalKey}}
+   {{$A.Name}}s =  map[string]{{$A.Name}}{}
    {{range $index,$V := $A.Content }}
    {{$A.Name}}s["{{generatePrimalKey $A.Attributes $V.Values}}"]= {{$A.Name}}{ {{generateContent $A.Attributes $V.Values}} } {{end}}
    {{else}}
