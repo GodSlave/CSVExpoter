@@ -11,6 +11,7 @@ import (
 	"flag"
 	"io/ioutil"
 	"html/template"
+	"bufio"
 )
 
 var delimiter = flag.String("d", ",", "Delimiter to use between fields")
@@ -21,6 +22,7 @@ type AllModule struct {
 	All          []Module
 	Enums        []Module
 	KeyMapModule Module
+	Responses    []Module
 }
 
 type Module struct {
@@ -83,6 +85,7 @@ func main() {
 
 	process(ApplicationDir, ApplicationDir+"out"+string(filepath.Separator)+"server", false)
 	generateServerFile(ServerAllModule, ApplicationDir+"out"+string(filepath.Separator)+"server")
+	generateServerResponsFile(ServerAllModule, ApplicationDir+"out"+string(filepath.Separator)+"server")
 }
 
 func loadNameMapTable(dirPath string) {
@@ -358,9 +361,14 @@ func process(dirPath string, outdir string, clientMode bool) error {
 					clientMode)
 			}
 		} else {
-			if len(info.Name()) > 4 && info.Name()[0:2] != "~$" && info.Name() != "对照表.xlsx" &&
-				!strings.HasSuffix(info.Name(), "配置.xlsx") {
-				if string(info.Name()[len(info.Name())-4:]) == "xlsx" {
+			if len(info.Name()) > 4 && info.Name()[0:2] != "~$" && info.Name() != "对照表.xlsx" {
+				switch {
+				case strings.HasSuffix(info.Name(), "配置.xlsx"):
+					readKeyMap(dirPath+string(filepath.Separator)+info.Name(), clientMode)
+				case strings.HasPrefix(info.Name(), "协议响应状态枚举"):
+
+					readResponses(dirPath+string(filepath.Separator)+info.Name(), clientMode)
+				case strings.HasSuffix(info.Name(), "xlsx"):
 					fmt.Println(info.Name())
 					xlFile, error := xlsx.OpenFile(dirPath + string(filepath.Separator) + info.Name())
 					checkError(error)
@@ -388,9 +396,9 @@ func process(dirPath string, outdir string, clientMode bool) error {
 							DoGenerateFile(xlFile, i, isEnum, outPutFileName, clientMode)
 						}
 					}
+
 				}
-			} else if (strings.HasSuffix(info.Name(), "配置.xlsx")) {
-				readKeyMap(dirPath+string(filepath.Separator)+info.Name(), clientMode)
+
 			}
 		}
 	}
@@ -472,6 +480,16 @@ func generateServerFile(all *AllModule, path string) error {
 	err = tpl.Execute(&printer, all)
 	checkError(err)
 	return err
+}
+
+func generateServerResponsFile(all *AllModule, path string) error {
+	tpl, err := template.New("server_struct.template").Parse(server_response_content)
+	checkError(err)
+	var printer = Printer{}
+	printer.f, err = os.OpenFile(path+string(filepath.Separator)+"errorCode.go", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	err = tpl.Execute(&printer, all)
+	checkError(err)
+	return nil
 }
 
 type Printer struct {
@@ -692,7 +710,11 @@ func checkError(err error) {
 	if err != nil {
 		fmt.Println(err.Error())
 		panic(err)
+		input := bufio.NewScanner(os.Stdin)
+		input.Scan()
 	}
+
+
 }
 
 func readKeyMap(filePath string, isClientMode bool) {
@@ -748,4 +770,43 @@ func readKeyMap(filePath string, isClientMode bool) {
 
 	}
 
+}
+
+func readResponses(filePath string, isClientMode bool) {
+	xlFile, error1 := xlsx.OpenFile(filePath)
+	checkError(error1)
+	sheetLen := len(xlFile.Sheets)
+
+	for i := 0; i < sheetLen; i++ {
+		sheet := xlFile.Sheets[i]
+		responsModule := Module{}
+		if isClientMode {
+			responsModule.Name = fmt.Sprintf("E%sResponseState", sheet.Name)
+		} else {
+			responsModule.Name = sheet.Name
+		}
+		for _, row := range sheet.Rows {
+			attr := Attr{}
+			var err error
+			var value string
+			for index, cell := range row.Cells {
+				value, err = cell.FormattedValue()
+				checkError(err)
+				switch index {
+				case 0:
+					attr.Type = value
+				case 1:
+					attr.Name = value
+				case 2:
+					attr.Desc = value
+				}
+			}
+			responsModule.Attributes = append(responsModule.Attributes, attr)
+		}
+		if isClientMode {
+			ClientAllModule.Responses = append(ClientAllModule.Responses, responsModule)
+		} else {
+			ServerAllModule.Responses = append(ServerAllModule.Responses, responsModule)
+		}
+	}
 }

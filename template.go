@@ -6,7 +6,15 @@ var ClientEnum = `// Fill out your copyright notice in the Description page of P
 
 #include "CoreMinimal.h"
 #include "GeneratedEnums.generated.h"
-
+{{range $index,$A := .Responses }}
+UENUM(BlueprintType)
+enum class {{$A.Name}} : uint8
+{
+	{{range $index,$C := $A.Attributes }}
+	{{$C.Name}} = {{$C.Type}}	UMETA(DisplayName = "{{$C.Desc}}"),
+	{{end }}
+};
+{{end }}
 {{range $index,$A := .Enums }}
 UENUM(BlueprintType)
 enum class {{$A.Name}} : uint8
@@ -112,3 +120,16 @@ var client_keymap_content = `
 const {{$A.Type}} UGeneratedConstVariables::{{$A.Name}} = {{$A.Desc}};
 {{end}}
 `
+
+var server_response_content = `
+package bean
+
+import "github.com/GodSlave/MyGoServer/base"
+
+var (
+{{range $index,$A := .Responses }}
+	{{range $index1,$B :=  $A.Attributes }}
+	{{$A.Name}}_{{$B.Name}}     = base.NewError({{$B.Type}}, "{{$B.Desc}}")
+	{{end}}
+{{end}}
+)`
