@@ -86,6 +86,7 @@ func main() {
 	process(ApplicationDir, ApplicationDir+"out"+string(filepath.Separator)+"server", false)
 	generateServerFile(ServerAllModule, ApplicationDir+"out"+string(filepath.Separator)+"server")
 	generateServerResponsFile(ServerAllModule, ApplicationDir+"out"+string(filepath.Separator)+"server")
+	generateServerInitDataFile(ServerAllModule, ApplicationDir+"out"+string(filepath.Separator)+"server")
 }
 
 func loadNameMapTable(dirPath string) {
@@ -492,6 +493,19 @@ func generateServerResponsFile(all *AllModule, path string) error {
 	return nil
 }
 
+func generateServerInitDataFile(all *AllModule, path string) error {
+	tpl, err := template.New("server_struct.template").Funcs(template.FuncMap{
+		"generateContent":   parseForServer,
+		"generatePrimalKey": ParsPrimalKey,
+	}).Parse(server_InitData_content)
+	checkError(err)
+	var printer = Printer{}
+	printer.f, err = os.OpenFile(path+string(filepath.Separator)+"initData.go", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	err = tpl.Execute(&printer, all)
+	checkError(err)
+	return nil
+}
+
 type Printer struct {
 	f *os.File
 }
@@ -713,7 +727,6 @@ func checkError(err error) {
 		input := bufio.NewScanner(os.Stdin)
 		input.Scan()
 	}
-
 
 }
 

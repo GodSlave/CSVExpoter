@@ -1,6 +1,9 @@
 package bean
 
-
+import (
+	"github.com/GodSlave/MyGoServer/module"
+	"github.com/go-xorm/xorm"
+)
 
 // model
 
@@ -17,8 +20,18 @@ const EDuty_marriage = 2 // 姻缘
 const EDuty_cause = 3 // 事业
 
 
-
-
-func init()  {
+func EnableDBCache(app module.App) {
+	cacher := xorm.NewLRUCacher(xorm.NewMemoryStore(), 1000)
 
 }
+
+func ClearDBChache(app module.App) {
+
+
+}
+
+func DisableDBCache(app module.App) {
+
+
+}
+

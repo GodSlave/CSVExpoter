@@ -57,12 +57,16 @@ public:
 
 var ServerStruct = `package bean
 
-
+import (
+	"github.com/GodSlave/MyGoServer/module"
+	"github.com/go-xorm/xorm"
+)
 
 // model
 {{range $index,$A := .All }}
 type {{$A.Name}} struct {
-{{range $index,$V := $A.Attributes }}   {{if $V.IsArray}}{{$V.Name}}     []{{$V.Type}}//{{$V.Desc}}
+{{range $index,$V := $A.Attributes }}   {{if $V.IsArray}}{{$V.Name}}     []{{$V.Type}}  "xorm:extends"//{{$V.Desc}}
+{{else if $V.IsPrimalKey}}{{$V.Name}}     {{$V.Type}} "xorm:pk"//{{$V.Desc}}
 {{else}}{{$V.Name}}     {{$V.Type}}//{{$V.Desc}}
 {{end}}{{end}}
 }{{end}}
@@ -77,20 +81,22 @@ type {{$A.Name}} int32
 {{range $index,$V := $A.Attributes }}const {{$A.Name}}_{{$V.Name}} = {{$V.Type}} // {{$V.Desc}}
 {{end}}{{end}}
 
-{{range $index,$A := .All }}{{if $A.HasPrimalKey}}var {{$A.Name}}s  map[string]{{$A.Name}}{{else}}var {{$A.Name}}s  []{{$A.Name}}{{end}}
-{{end}}
-
-func init()  {
+func EnableDBCache(app module.App) {
+	cacher := xorm.NewLRUCacher(xorm.NewMemoryStore(), 1000)
 {{range $index,$A := .All }}
-   {{if $A.HasPrimalKey}}
-   {{$A.Name}}s =  map[string]{{$A.Name}}{}
-   {{range $index,$V := $A.Content }}
-   {{$A.Name}}s["{{generatePrimalKey $A.Attributes $V.Values}}"]= {{$A.Name}}{ {{generateContent $A.Attributes $V.Values}} } {{end}}
-   {{else}}
-   {{range $index,$V := $A.Content }}
-   {{$A.Name}}s = append({{$A.Name}}s , {{$A.Name}}{ {{generateContent $A.Attributes $V.Values}} }){{end}}
-   {{end}}{{end}}
+	app.GetSqlEngine().MapCacher(&{{$A.Name}}{}, cacher){{end}}
 }
+
+func ClearDBChache(app module.App) {
+{{range $index,$A := .All }}
+	app.GetSqlEngine().ClearCache(&{{$A.Name}}{}){{end}}
+}
+
+func DisableDBCache(app module.App) {
+{{range $index,$A := .All }}
+	app.GetSqlEngine().MapCacher(&{{$A.Name}}{}, nil){{end}}
+}
+
 `
 var client_keymap_head = `// Fill out your copyright notice in the Description page of Project Settings.
 
@@ -133,3 +139,45 @@ var (
 	{{end}}
 {{end}}
 )`
+
+var server_InitData_content = `
+package bean
+
+import (
+	"github.com/GodSlave/MyGoServer/db"
+	"os/exec"
+	"os"
+	"path/filepath"
+	"fmt"
+	"flag"
+	"github.com/GodSlave/MyGoServer/conf"
+)
+
+func main()  {
+	file, _ := exec.LookPath(os.Args[0])
+	ApplicationPath, _ := filepath.Abs(file)
+	ApplicationDir, _ := filepath.Split(ApplicationPath)
+	defaultPath := fmt.Sprintf("%sconf"+string(filepath.Separator)+"server.json", ApplicationDir)
+	confPath := flag.String("conf", defaultPath, "Server configuration file path")
+	flag.Parse() //解析输入的参数
+	f, err := os.Open(*confPath)
+	if err != nil {
+		panic(err)
+	}
+	conf.LoadConfig(f.Name()) //加载配置文件
+	//sql
+	sql := db.BaseSql{
+	}
+	sql.Url = conf.Conf.DB.SQL
+	sql.InitDB()
+	sql.CheckMigrate()
+	defer sql.Engine.Close()
+
+{{range $index,$A := .All }}
+	sql.Engine.DropTables(&{{$A.Name}}{})
+	sql.Engine.Sync2(&{{$A.Name}}{})
+   {{range $index,$V := $A.Content }}
+ 	sql.Engine.Insert( {{$A.Name}}{ {{generateContent $A.Attributes $V.Values}} })
+   {{end}}{{end}}
+}
+`
