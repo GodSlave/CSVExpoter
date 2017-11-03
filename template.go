@@ -153,7 +153,7 @@ import (
 	"github.com/GodSlave/MyGoServer/conf"
 )
 
-func main()  {
+func Init()  {
 	file, _ := exec.LookPath(os.Args[0])
 	ApplicationPath, _ := filepath.Abs(file)
 	ApplicationDir, _ := filepath.Split(ApplicationPath)
