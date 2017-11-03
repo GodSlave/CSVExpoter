@@ -768,7 +768,7 @@ func readKeyMap(filePath string, isClientMode bool) {
 							attr.Desc = "false"
 						}
 					case "string":
-						attr.Desc = fmt.Sprintf("\"%s\"", attr.Desc)
+						attr.Desc = fmt.Sprintf("`%s`", attr.Desc)
 					case "FName":
 						attr.Desc = fmt.Sprintf("FName(\"%s\")", attr.Desc)
 					}
