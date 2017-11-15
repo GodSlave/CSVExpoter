@@ -48,7 +48,11 @@ public:
 	{{range $index,$V := $A.Attributes }}
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "{{$A.Name}}", meta = (DisplayName = "{{$V.Desc}}"))
 	{{if $V.IsArray}}
-	TArray< F{{$V.Type}}> {{$V.Name}};{{else}}
+	{{if checkIsEnum $V.Type}}
+	TArray< {{$V.Type}}> {{$V.Name}};{{else}}
+	TArray< F{{$V.Type}}> {{$V.Name}};
+	{{end}}
+	{{else}}
 	{{$V.Type}} {{$V.Name}};
 	{{end}}{{end}}
 

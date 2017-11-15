@@ -430,7 +430,9 @@ func GenerateClientHeadFile(all *AllModule, path string) error {
 		}
 	}
 	all.All = alll
-	tpl, err := template.New("client_struct.template").Parse(ClientStruct)
+	tpl, err := template.New("client_struct.template").Funcs(template.FuncMap{
+		"checkIsEnum": checkIsEnum,
+	}).Parse(ClientStruct)
 	checkError(err)
 	var printer = Printer{}
 	printer.f, err = os.OpenFile(path+string(filepath.Separator)+"GeneratedStructs.h", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
@@ -521,6 +523,13 @@ func (printer *Printer) Write(p []byte) (n int, err error) {
 	return 0, err
 }
 
+func checkIsEnum(Type string) bool {
+	if len(Type) > 2 && Type[0] == 'E' && Type[1] >= 'A' && Type[1] <= 'Z' {
+		return true
+	}
+	return false
+}
+
 func parseForServer(types [] Attr, contents []string) string {
 	len1 := len(types)
 	len2 := len(contents)
@@ -556,9 +565,15 @@ func parseForServer(types [] Attr, contents []string) string {
 				value := contents[i]
 				if strings.HasPrefix(value, "\"(") && strings.HasSuffix(value, ")\"") {
 					value = value[2:len(value)-2]
-					subValues := strings.Split(value, "),(")
-					subValues[0] = subValues[0][1:]
-					subValues[len(subValues)-1] = subValues[len(subValues)-1][0: len(subValues[len(subValues)-1])-1]
+					var subValues []string
+					if value[0] == '(' {
+						subValues = strings.Split(value, "),(")
+						subValues[0] = subValues[0][1:]
+						subValues[len(subValues)-1] = subValues[len(subValues)-1][0: len(subValues[len(subValues)-1])-1]
+					} else {
+						subValues = strings.Split(value, ",")
+					}
+
 					ItemType := types[i].Type
 					var matched = false
 					for _, module := range ServerAllModule.All {
@@ -656,6 +671,7 @@ func generateClientCSVFile(module Module, outPutFileDir string) error {
 		lineContent += buildClientCSVContent(module.Attributes, content.Values, false)
 		allContent = append(allContent, lineContent)
 	}
+
 	result := strings.Join(allContent, "\n")
 	error := ioutil.WriteFile(outPutFileDir+string(filepath.Separator)+module.Name+".csv", []byte(result), os.ModePerm)
 	checkError(error)
@@ -686,6 +702,7 @@ func buildClientCSVContent(types [] Attr, contents []string, withName bool) stri
 			for _, module := range ClientAllModule.All {
 				if module.Name == ItemType {
 					if attr.IsArray {
+
 						subValues := strings.Split(contents[i], "),(")
 						subValues[0] = subValues[0][3:]
 						subValues[len(subValues)-1] = subValues[len(subValues)-1][0: len(subValues[len(subValues)-1])-3]
@@ -707,6 +724,35 @@ func buildClientCSVContent(types [] Attr, contents []string, withName bool) stri
 					matched = true
 				}
 			}
+
+			for _, enum := range ClientAllModule.Enums {
+				if enum.Name == ItemType {
+					if attr.IsArray {
+						currentContent := contents[i];
+						currentContent = currentContent[2: len(currentContent)-2]
+						subValues := strings.Split(currentContent, ",")
+						for _, subValue := range subValues {
+							for _,enumItem := range enum.Attributes{
+								if subValue == enumItem.Type{
+									content += enumItem.Name
+									content += ","
+									matched = true
+								}
+							}
+						}
+						content = content[0:len(content)-1]
+						content = fmt.Sprintf("\"(%s)\"", content)
+					} else {
+						for _,enumItem := range enum.Attributes{
+							if  contents[i] == enumItem.Type{
+								content = enumItem.Name
+								matched = true
+							}
+						}
+					}
+				}
+			}
+
 			if !matched {
 				content = contents[i]
 			}
@@ -717,6 +763,10 @@ func buildClientCSVContent(types [] Attr, contents []string, withName bool) stri
 			result += content + ","
 		}
 	}
+	if len(result) > 1 {
+		result = result[0:len(result)-1]
+	}
+
 	return result
 }
 
@@ -770,6 +820,7 @@ func readKeyMap(filePath string, isClientMode bool) {
 					case "string":
 						attr.Desc = fmt.Sprintf("`%s`", attr.Desc)
 					case "FName":
+						attr.Desc = strings.Replace(attr.Desc, "\"", "\\\"", -1)
 						attr.Desc = fmt.Sprintf("FName(\"%s\")", attr.Desc)
 					}
 				}
