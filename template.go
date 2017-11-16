@@ -33,6 +33,7 @@ var ClientStruct = `// Fill out your copyright notice in the Description page of
 #include "AttributeSet.h"
 #include "AbilitySystemInterface.h"
 #include "GeneratedEnums.h"
+#include "PussyDataStructs.h"
 #include "GeneratedStructs.generated.h"
 
 {{range $index,$A := .All }}
@@ -57,6 +58,17 @@ public:
 	{{end}}{{end}}
 
 };
+
+UCLASS(Blueprintable)
+class CLOUD_API U{{$A.Name}}ItemData : public UPussyItemData
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "ItemBase", Meta = (DisplayName = "Data", ExposeOnSpawn = true))
+		F{{$A.Name}} Data;
+};
+
 {{end}}`
 
 var ServerStruct = `package bean
