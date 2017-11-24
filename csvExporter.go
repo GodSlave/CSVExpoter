@@ -58,8 +58,8 @@ var ClientAllModule *AllModule
 var ServerAllModule *AllModule
 
 func main() {
-	ClientTypeMap = map[string]string{"i": "int32", "f": "float", "s": "FName", "b": "bool", "e": "EVictoryEnum", "a": "objectArray", "o": "object"}
-	ServerTypeMap = map[string]string{"i": "int32", "f": "float", "s": "string", "b": "bool", "e": "int32", "a": "objectArray", "o": "object"}
+	ClientTypeMap = map[string]string{"i": "int32", "f": "float", "s": "FName", "b": "bool", "u": "USlateBrushAsset", "e": "EVictoryEnum", "a": "objectArray", "o": "object"}
+	ServerTypeMap = map[string]string{"i": "int32", "f": "float", "s": "string", "b": "bool", "u": "string", "e": "int32", "a": "objectArray", "o": "object"}
 	TableNameMap = map[string]string{}
 
 	file, _ := exec.LookPath(os.Args[0])
@@ -536,10 +536,24 @@ func parseForServer(types [] Attr, contents []string) string {
 	if len1 != len2 {
 		fmt.Println("Attr && content length not match")
 	}
+	if len1 > len2 {
+		fmt.Println("%v", types)
+		fmt.Println(contents)
+		return ""
+	}
 	result := ""
 	for i := 0; i < len1; i++ {
 		var content string
 		switch types[i].Type {
+		case "bool":
+			if contents[i] == "0" {
+				content = "false"
+			} else if contents[i] == "1" {
+				content = "true"
+			} else {
+				content = contents[i]
+			}
+
 		case "string":
 			if types[i].IsArray {
 				value := contents[i]
@@ -556,7 +570,14 @@ func parseForServer(types [] Attr, contents []string) string {
 			}
 		case "int32", "float", "int64":
 			if types[i].IsArray {
-				content = fmt.Sprintf("[]%s{%s}", types[i].Type, contents[i][2:len(contents)-2])
+				lens := len([]rune(contents[i]))
+				if lens > 0 {
+					tempContent := contents[i][2:lens-2]
+					content = fmt.Sprintf("[]%s{%s}", types[i].Type, tempContent)
+				} else {
+					content = fmt.Sprintf("[]%s{}", types[i].Type)
+				}
+
 			} else {
 				content = contents[i]
 			}
@@ -647,6 +668,7 @@ func ParsPrimalKey(types [] Attr, contents []string) string {
 }
 
 func generateClientCSVFile(module Module, outPutFileDir string) error {
+	fmt.Println(module.Name)
 	var allContent []string
 	var firstLine string
 	if module.HasPrimalKey {
@@ -684,15 +706,20 @@ func buildClientCSVContent(types [] Attr, contents []string, withName bool) stri
 	if len1 != len2 {
 		fmt.Println("error length not match")
 	}
+
+	if len1 > len2 {
+		fmt.Println(contents)
+		fmt.Println("fater error length not match")
+		return ""
+	}
+
 	result := ""
 	for i := 0; i < len1; i++ {
 		attr := types[i]
 		var content string;
 		switch attr.Type {
-		case "FName":
-
+		case "FName","USlateBrushAsset":
 			content = fmt.Sprintf("\"%s\"", contents[i])
-
 		case "int32", "float", "bool":
 			content = contents[i]
 		default:
@@ -718,7 +745,9 @@ func buildClientCSVContent(types [] Attr, contents []string, withName bool) stri
 						subValue := contents[i][2:len(contents[i])-2]
 						subValues := strings.Split(subValue, ",")
 						content = buildClientCSVContent(module.Attributes, subValues, true)
-						content = content[0:len(content)-1]
+						if len(content) > 1 {
+							content = content[0:len(content)-1]
+						}
 					}
 					content = fmt.Sprintf("\"(%s)\"", content)
 					matched = true
@@ -732,8 +761,8 @@ func buildClientCSVContent(types [] Attr, contents []string, withName bool) stri
 						currentContent = currentContent[2: len(currentContent)-2]
 						subValues := strings.Split(currentContent, ",")
 						for _, subValue := range subValues {
-							for _,enumItem := range enum.Attributes{
-								if subValue == enumItem.Type{
+							for _, enumItem := range enum.Attributes {
+								if subValue == enumItem.Type {
 									content += enumItem.Name
 									content += ","
 									matched = true
@@ -743,8 +772,8 @@ func buildClientCSVContent(types [] Attr, contents []string, withName bool) stri
 						content = content[0:len(content)-1]
 						content = fmt.Sprintf("\"(%s)\"", content)
 					} else {
-						for _,enumItem := range enum.Attributes{
-							if  contents[i] == enumItem.Type{
+						for _, enumItem := range enum.Attributes {
+							if contents[i] == enumItem.Type {
 								content = enumItem.Name
 								matched = true
 							}
