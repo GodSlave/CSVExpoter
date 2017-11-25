@@ -524,7 +524,8 @@ func (printer *Printer) Write(p []byte) (n int, err error) {
 }
 
 func checkIsEnum(Type string) bool {
-	if len(Type) > 2 && Type[0] == 'E' && Type[1] >= 'A' && Type[1] <= 'Z' {
+	if len(Type) > 2 && Type[0] == 'E' && Type[1] >= 'A' && Type[1] <= 'Z' ||
+		Type == "int32" ||Type =="FName" || Type == "bool" ||Type == "USlateBrushAsset" {
 		return true
 	}
 	return false
