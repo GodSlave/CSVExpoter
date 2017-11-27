@@ -58,7 +58,7 @@ var ClientAllModule *AllModule
 var ServerAllModule *AllModule
 
 func main() {
-	ClientTypeMap = map[string]string{"i": "int32", "f": "float", "s": "FName", "b": "bool", "u": "USlateBrushAsset", "e": "EVictoryEnum", "a": "objectArray", "o": "object"}
+	ClientTypeMap = map[string]string{"i": "int32", "f": "float", "s": "FName", "b": "bool", "u": "FSlateBrush", "e": "EVictoryEnum", "a": "objectArray", "o": "object"}
 	ServerTypeMap = map[string]string{"i": "int32", "f": "float", "s": "string", "b": "bool", "u": "string", "e": "int32", "a": "objectArray", "o": "object"}
 	TableNameMap = map[string]string{}
 

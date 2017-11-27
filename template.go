@@ -34,7 +34,6 @@ var ClientStruct = `// Fill out your copyright notice in the Description page of
 #include "AbilitySystemInterface.h"
 #include "GeneratedEnums.h"
 #include "PussyDataStructs.h"
-#include "Slate/SlateBrushAsset.h"
 #include "GeneratedStructs.generated.h"
 
 {{range $index,$A := .All }}
