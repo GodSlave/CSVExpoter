@@ -525,7 +525,7 @@ func (printer *Printer) Write(p []byte) (n int, err error) {
 
 func checkIsEnum(Type string) bool {
 	if len(Type) > 2 && Type[0] == 'E' && Type[1] >= 'A' && Type[1] <= 'Z' ||
-		Type == "int32" ||Type =="FName" || Type == "bool" ||Type == "USlateBrushAsset" {
+		Type == "int32" ||Type =="FName" || Type == "bool" ||Type == "FSlateBrush" {
 		return true
 	}
 	return false
@@ -719,7 +719,7 @@ func buildClientCSVContent(types [] Attr, contents []string, withName bool) stri
 		attr := types[i]
 		var content string;
 		switch attr.Type {
-		case "FName","USlateBrushAsset":
+		case "FName","FSlateBrush":
 			content = fmt.Sprintf("\"%s\"", contents[i])
 		case "int32", "float", "bool":
 			content = contents[i]
