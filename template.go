@@ -28,7 +28,7 @@ var ClientStruct = `// Fill out your copyright notice in the Description page of
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "Engine.h"
 #include "GameFramework/Character.h"
 #include "AttributeSet.h"
 #include "AbilitySystemInterface.h"
@@ -83,6 +83,7 @@ import (
 type {{$A.Name}} struct {
 {{range $index,$V := $A.Attributes }}   {{if $V.IsArray}}{{$V.Name}}     []{{$V.Type}}  "xorm:extends"//{{$V.Desc}}
 {{else if $V.IsPrimalKey}}{{$V.Name}}     {{$V.Type}} "xorm:pk"//{{$V.Desc}}
+{{else if  isLargeString ($V.Type) }}{{$V.Name}}     string "xorm:\"varchar(2048)\""//{{$V.Desc}}
 {{else}}{{$V.Name}}     {{$V.Type}}//{{$V.Desc}}
 {{end}}{{end}}
 }{{end}}

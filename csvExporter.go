@@ -59,7 +59,7 @@ var ServerAllModule *AllModule
 
 func main() {
 	ClientTypeMap = map[string]string{"i": "int32", "f": "float", "s": "FName", "b": "bool", "u": "FSlateBrush", "e": "EVictoryEnum", "a": "objectArray", "o": "object"}
-	ServerTypeMap = map[string]string{"i": "int32", "f": "float", "s": "string", "b": "bool", "u": "string", "e": "int32", "a": "objectArray", "o": "object"}
+	ServerTypeMap = map[string]string{"i": "int32", "f": "float", "s": "string", "b": "bool", "u": "largeString", "e": "int32", "a": "objectArray", "o": "object","l": "largeString"}
 	TableNameMap = map[string]string{}
 
 	file, _ := exec.LookPath(os.Args[0])
@@ -473,6 +473,7 @@ func generateServerFile(all *AllModule, path string) error {
 	tpl, err := template.New("server_struct.template").Funcs(template.FuncMap{
 		"generateContent":   parseForServer,
 		"generatePrimalKey": ParsPrimalKey,
+		"isLargeString":     isLargeString,
 	}).Parse(ServerStruct)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -499,6 +500,7 @@ func generateServerInitDataFile(all *AllModule, path string) error {
 	tpl, err := template.New("server_struct.template").Funcs(template.FuncMap{
 		"generateContent":   parseForServer,
 		"generatePrimalKey": ParsPrimalKey,
+		"isLargeString":     isLargeString,
 	}).Parse(server_InitData_content)
 	checkError(err)
 	var printer = Printer{}
@@ -525,10 +527,14 @@ func (printer *Printer) Write(p []byte) (n int, err error) {
 
 func checkIsEnum(Type string) bool {
 	if len(Type) > 2 && Type[0] == 'E' && Type[1] >= 'A' && Type[1] <= 'Z' ||
-		Type == "int32" ||Type =="FName" || Type == "bool" ||Type == "FSlateBrush" {
+		Type == "int32" || Type == "FName" || Type == "bool" || Type == "FSlateBrush" {
 		return true
 	}
 	return false
+}
+
+func isLargeString(type1 string) bool {
+	return type1 == "largeString"
 }
 
 func parseForServer(types [] Attr, contents []string) string {
@@ -555,7 +561,7 @@ func parseForServer(types [] Attr, contents []string) string {
 				content = contents[i]
 			}
 
-		case "string":
+		case "string", "largeString":
 			if types[i].IsArray {
 				value := contents[i]
 				value = value[2:len(value)-2]
@@ -567,6 +573,7 @@ func parseForServer(types [] Attr, contents []string) string {
 				content = strings.Join(realSubs, ",")
 				content = fmt.Sprintf("[]string{%s}", content)
 			} else {
+				contents[i] = strings.Replace(contents[i], "\"", "\\\"", -1);
 				content = fmt.Sprintf(`"%s"`, contents[i])
 			}
 		case "int32", "float", "int64":
@@ -719,7 +726,7 @@ func buildClientCSVContent(types [] Attr, contents []string, withName bool) stri
 		attr := types[i]
 		var content string;
 		switch attr.Type {
-		case "FName","FSlateBrush":
+		case "FName", "FSlateBrush":
 			content = fmt.Sprintf("\"%s\"", contents[i])
 		case "int32", "float", "bool":
 			content = contents[i]
